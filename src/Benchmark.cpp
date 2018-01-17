@@ -5,6 +5,16 @@
 
 Benchmark::Benchmark(const unsigned int nOperations) {
     m_nOperations = nOperations;
+
+#ifdef _MSC_VER
+	m_start = 0;
+	m_end = 0 ;
+	m_frequency = 0 ;
+	// Returns the current performance-counter frequency, in counts per second
+	if( QueryPerformanceFrequency((LARGE_INTEGER*)&m_frequency) == FALSE ) {
+		std::cout << "Error calling QueryPerformanceFrequency(): " << GetLastError() << std::endl ;
+	}
+#endif
 }
 
 void Benchmark::SingleAllocation(Allocator* allocator, const std::size_t size, const std::size_t alignment) {
@@ -31,7 +41,7 @@ void Benchmark::SingleFree(Allocator* allocator, const std::size_t size, const s
     std::cout << "\tSize:     \t" << size << std::endl;
     std::cout << "\tAlignment\t" << alignment << std::endl;
 
-    void* addresses[m_nOperations];
+    void** addresses = new void*[m_nOperations];
 
     setTimer(m_start);
 
@@ -48,6 +58,8 @@ void Benchmark::SingleFree(Allocator* allocator, const std::size_t size, const s
     }
 
     setTimer(m_end);
+
+	delete [] addresses ;
 
     BenchmarkResults results = buildResults(m_nOperations, calculateElapsedTime(), allocator->m_peak);
     printResults(results);
@@ -97,9 +109,10 @@ void Benchmark::RandomFree(Allocator* allocator, const std::vector<std::size_t>&
 
     std::cout << "\tBENCHMARK: ALLOCATION/FREE" << std::endl;
 
-    setTimer(m_start);
+    void** addresses = new void*[m_nOperations];
 
-    void* addresses[m_nOperations];
+	setTimer(m_start);
+
     std::size_t allocation_size;
     std::size_t alignment;
 
@@ -118,10 +131,15 @@ void Benchmark::RandomFree(Allocator* allocator, const std::vector<std::size_t>&
 
     setTimer(m_end);
 
+	delete [] addresses ;
+
     BenchmarkResults results = buildResults(m_nOperations, calculateElapsedTime(), allocator->m_peak);
     printResults(results);
 
 }
+
+
+#ifndef _MSC_VER
 
 void Benchmark::setTimer(timespec& timer) {
     clock_gettime(CLOCK_REALTIME, &timer);
@@ -144,6 +162,21 @@ const double Benchmark::calculateElapsedTime() const {
     return time_msec;
 }
 
+#else
+
+void Benchmark::setTimer(__int64& timer) {
+	// Returns the current performance-counter value, in counts
+	if( QueryPerformanceCounter((LARGE_INTEGER*)&timer) != TRUE ) {
+		std::cout << "Error calling QueryPerformanceCounter(): " << GetLastError() << std::endl ;
+	}
+}
+
+double Benchmark::calculateElapsedTime() const {
+	return (((m_end - m_start) * 1.0 ) / m_frequency) * 1000.0 ;
+}
+
+#endif
+
 void Benchmark::printResults(const BenchmarkResults& results) const {
     //std::cout << "\tRESULTS:" << std::endl;
     std::cout << "\t\tOperations:    \t" << results.nOperations << std::endl;
@@ -155,7 +188,7 @@ void Benchmark::printResults(const BenchmarkResults& results) const {
     std::cout << std::endl;
 }
 
-const BenchmarkResults Benchmark::buildResults(const unsigned int nOperations, const double elapsedTime, const std::size_t memoryPeak) const {
+const BenchmarkResults Benchmark::buildResults(unsigned int nOperations, double elapsedTime, std::size_t memoryPeak) const {
     BenchmarkResults results;
 
     results.nOperations = nOperations;

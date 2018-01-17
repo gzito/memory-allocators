@@ -1,7 +1,7 @@
 #include "LinearAllocator.h"
-#include "Utils.h"  /* CalculatePadding */
-#include <stdlib.h>     /* malloc, free */
-#include <cassert>   /*assert		*/
+#include "Utils.h"		// CalculatePadding
+#include <stdlib.h>     // malloc, free
+#include <cassert>		// assert
 #include <algorithm>    // max
 #ifdef _DEBUG
 #include <iostream>
@@ -12,10 +12,16 @@ LinearAllocator::LinearAllocator(const std::size_t totalSize)
 }
 
 void LinearAllocator::Init() {
-    if (m_start_ptr != nullptr) {
+	static char msg[64] ;
+
+	if (m_start_ptr != nullptr) {
         free(m_start_ptr);
     }
     m_start_ptr = malloc(m_totalSize);
+	if( !m_start_ptr ) {
+		sprintf_s(msg,sizeof(msg),"Cannot allocate %Iu bytes", m_totalSize) ;
+		throw std::exception( msg ) ;
+	}
     m_offset = 0;
 }
 

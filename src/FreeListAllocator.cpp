@@ -15,11 +15,17 @@ FreeListAllocator::FreeListAllocator(const std::size_t totalSize, const Placemen
 }
 
 void FreeListAllocator::Init() {
-    if (m_start_ptr != nullptr) {
+	static char msg[64] ;
+
+	if (m_start_ptr != nullptr) {
         free(m_start_ptr);
         m_start_ptr = nullptr;
     }
     m_start_ptr = malloc(m_totalSize);
+	if( !m_start_ptr ) {
+		sprintf_s(msg, sizeof(msg), "Cannot allocate %Iu bytes", m_totalSize) ;
+		throw std::exception( msg ) ;
+	}
 
     this->Reset();
 }
